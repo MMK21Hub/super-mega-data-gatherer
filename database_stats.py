@@ -30,22 +30,27 @@ class DatabaseClient:
                 """
                 WITH assigned_tickets AS (
                     SELECT
-                        date_trunc('day', "createdAt") AS day,
+                        date_trunc('day', "assignedAt") AS assignedAt,
                         EXTRACT(EPOCH FROM ("assignedAt" - "createdAt")) AS resolution_seconds
                     FROM "Ticket"
                     WHERE "assignedAt" BETWEEN %s AND %s
                 )
-                SELECT day,
+                SELECT assignedAt,
                         percentile_cont(%s) WITHIN GROUP (ORDER BY resolution_seconds) AS "resolution_time"
                 FROM assigned_tickets
-                GROUP BY day
-                ORDER BY day;
+                GROUP BY assignedAt
+                ORDER BY assignedAt;
                 """,
                 (start, end, percentile),
             )
             rows = await cur.fetchall()
-            print(rows)
-            return {row[0].isoformat(): row[1] for row in rows}
+
+            # Convert to dict
+            output = {}
+            for date, value in rows:
+                day_str = date.date().isoformat()
+                output[day_str] = value
+            return output
 
     async def disconnect(self):
         if self.connection:
