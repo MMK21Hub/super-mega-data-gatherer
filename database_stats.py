@@ -1,4 +1,5 @@
 from datetime import datetime
+from sys import exc_info
 import psycopg
 import structlog
 
@@ -16,7 +17,6 @@ class DatabaseClient:
     async def connect(self):
         self.connection = await psycopg.AsyncConnection.connect(self.db_url)
         logger.debug("Connected to the database")
-        print(self.connection)
 
     async def get_question_hang_times(
         self, start: datetime, end: datetime, percentile: float
@@ -51,6 +51,18 @@ class DatabaseClient:
                 day_str = date.date().isoformat()
                 output[day_str] = value
             return output
+
+    async def is_healthy(self) -> bool:
+        if not self.connection:
+            return False
+        try:
+            async with self.connection.cursor() as cur:
+                await cur.execute("SELECT 1")
+                result = await cur.fetchone()
+                return result is not None and result[0] == 1
+        except Exception:
+            logger.error("Database health check failed", exc_info=exc_info())
+            return False
 
     async def disconnect(self):
         if self.connection:

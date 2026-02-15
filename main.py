@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from structlog import get_logger
 
 from database_stats import DatabaseClient
@@ -27,12 +27,27 @@ app = FastAPI(lifespan=app_lifespan)
 async def super_mega_stats(start: datetime, end: datetime | None, step: timedelta):
     end = end or datetime.now(UTC).replace(microsecond=0)
     return {
-        "message": "Hello World",
         "unresolved_tickets": await get_unresolved_tickets(start, end, step),
         "hang_time": {
             "p90": await db_client.get_question_hang_times(start, end, 0.90),
         },
     }
+
+
+@app.get("/")
+async def root(request: Request):
+    return {
+        "message": "hey bestie!!",
+        "documentation_url": f"{request.base_url}docs",
+        "source_code_url": "https://github.com/MMK21Hub/super-mega-data-gatherer",
+    }
+
+
+@app.get("/health")
+async def health_check():
+    healths = {"database": await db_client.is_healthy()}
+    overall_health = all(healths.values())
+    return {"ok": overall_health, **healths}
 
 
 logger.info("Started Super Mega Data Gatherer")
