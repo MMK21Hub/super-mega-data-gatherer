@@ -27,10 +27,10 @@ def configure_logging():
     stdlib_handler = logging.StreamHandler()
     stdlib_handler.setFormatter(stdlib_formatter)
 
-    # Make Uvicorn's logs go through structlog
-    uvicorn_logger = logging.getLogger("uvicorn")
-    uvicorn_logger.handlers = [stdlib_handler]
-
-    # Make anything else that uses `logging` go through structlog
+    # Make anything that uses `logging` go through structlog
     root_logger = logging.getLogger()
     root_logger.handlers = [stdlib_handler]
+
+    # Silence Uvicorn's custom log formatter
+    uvicorn_logger = logging.getLogger("uvicorn")
+    uvicorn_logger.handlers = []
