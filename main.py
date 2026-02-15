@@ -9,18 +9,14 @@ from prometheus_stats import get_unresolved_tickets
 
 configure_logging()
 logger = get_logger()
-db_client = DatabaseClient()
 
 
 @asynccontextmanager
-async def app_lifespan(app: FastAPI):
-    logger.error("AAAAAAA")
+async def app_lifespan(_: FastAPI):
+    global db_client
     db_client = DatabaseClient()
     await db_client.connect()
-    logger.error("AAAAAAA done")
     yield
-    # Clean up the ML models and release the resources
-    logger.error("DISCONNECTING")
     await db_client.disconnect()
 
 
