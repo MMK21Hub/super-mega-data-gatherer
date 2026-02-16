@@ -34,3 +34,5 @@ def configure_logging():
     # Silence Uvicorn's custom log formatter
     uvicorn_logger = logging.getLogger("uvicorn")
     uvicorn_logger.handlers = []
+    uvicorn_access = logging.getLogger("uvicorn.access")
+    uvicorn_access.handlers = []
