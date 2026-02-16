@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from sys import exc_info
 import psycopg
 import structlog
@@ -21,6 +21,8 @@ class DatabaseClient:
     async def get_question_hang_times(
         self, start: datetime, end: datetime, percentile: float
     ):
+        end = end + timedelta(days=1)
+
         conn = self.connection
         if not conn:
             raise RuntimeError("Database client is not connected")
@@ -36,7 +38,8 @@ class DatabaseClient:
                     WHERE "assignedAt" BETWEEN %s AND %s
                 )
                 SELECT assignedAt,
-                        percentile_cont(%s) WITHIN GROUP (ORDER BY resolution_seconds) AS "resolution_time"
+                        percentile_cont(%s) WITHIN GROUP (ORDER BY resolution_seconds) AS "resolution_time",
+                        COUNT(resolution_seconds) as count
                 FROM assigned_tickets
                 GROUP BY assignedAt
                 ORDER BY assignedAt;
@@ -47,9 +50,18 @@ class DatabaseClient:
 
             # Convert to dict
             output = {}
-            for date, value in rows:
+            debug_output = []
+            for date, value, count in rows:
                 day_str = date.date().isoformat()
                 output[day_str] = value
+                debug_output.append({"date": day_str, "value": value, "count": count})
+            logger.debug(
+                "Fetched question hang times",
+                start=start.isoformat(),
+                end=end.isoformat(),
+                percentile=percentile,
+                result=debug_output,
+            )
             return output
 
     async def is_healthy(self) -> bool:
