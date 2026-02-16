@@ -28,10 +28,12 @@ app = FastAPI(lifespan=app_lifespan)
 
 
 @app.get("/api/v1/super-mega-stats")
-async def super_mega_stats(start: datetime, end: datetime | None, step: timedelta):
+async def super_mega_stats(start: datetime, end: datetime | None):
     end = end or datetime.now(UTC).replace(microsecond=0)
     return {
-        "unresolved_tickets": await get_unresolved_tickets(start, end, step),
+        "unresolved_tickets": await get_unresolved_tickets(
+            start, end, step=timedelta(days=1)
+        ),
         "hang_time": {
             "p90": await db_client.get_question_hang_times(start, end, 0.90),
         },
