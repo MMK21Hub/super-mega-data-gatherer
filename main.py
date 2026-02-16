@@ -1,7 +1,11 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+from os import getenv
+from sys import exc_info
 from fastapi import FastAPI, Request
 from structlog import get_logger
+import uvicorn
+import uvicorn.config
 
 from database_stats import DatabaseClient
 from logging_config import configure_logging
@@ -50,4 +54,18 @@ async def health_check():
     return {"ok": overall_health, **healths}
 
 
-logger.info("Started Super Mega Data Gatherer")
+logger.info("Starting Super Mega Data Gatherer")
+
+if __name__ == "__main__":
+    host = getenv("HOST") or "0.0.0.0"
+    port_raw = getenv("PORT")
+    try:
+        port = int(port_raw or 8000)
+    except ValueError:
+        logger.fatal(
+            "Invalid PORT environment variable, must be an integer",
+            port=port_raw,
+        )
+        raise
+
+    uvicorn.run(app, host=host, port=port, log_config=None)
