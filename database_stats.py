@@ -17,8 +17,20 @@ class DatabaseClient:
         self.max_cursor_retries = 5
 
     async def connect(self):
+        if self.connection:
+            try:
+                await self.connection.close()
+                logger.info("Re-connecting to the database")
+            except Exception:
+                logger.warning(
+                    "Failed to close existing database connection during reconnect",
+                    exc_info=exc_info(),
+                )
         self.connection = await psycopg.AsyncConnection.connect(self.db_url)
-        logger.debug("Connected to the database")
+        logger.debug("Connected to the database successfully")
+
+    async def reconnect(self):
+        await self.connect()
 
     async def db_cursor(self, attempt=0) -> psycopg.AsyncCursor:
         if not self.connection:
@@ -35,6 +47,7 @@ class DatabaseClient:
                 logger.error("Exceeded maximum db_cursor() retry attempts")
                 raise
             await asyncio.sleep(0.2)
+            await self.reconnect()
             return await self.db_cursor(attempt + 1)
 
     async def get_question_hang_times(
@@ -46,47 +59,42 @@ class DatabaseClient:
         if not conn:
             raise RuntimeError("Database client is not connected")
 
-        try:
-            async with await self.db_cursor() as cur:
-                await cur.execute(
-                    """
-                    WITH assigned_tickets AS (
-                        SELECT
-                            date_trunc('day', "assignedAt") AS assignedAt,
-                            EXTRACT(EPOCH FROM ("assignedAt" - "createdAt")) AS resolution_seconds
-                        FROM "Ticket"
-                        WHERE "assignedAt" BETWEEN %s AND %s
-                    )
-                    SELECT assignedAt,
-                            percentile_cont(%s) WITHIN GROUP (ORDER BY resolution_seconds) AS "resolution_time",
-                            COUNT(resolution_seconds) as count
-                    FROM assigned_tickets
-                    GROUP BY assignedAt
-                    ORDER BY assignedAt;
-                    """,
-                    (start, end, percentile),
+        async with await self.db_cursor() as cur:
+            await cur.execute(
+                """
+                WITH assigned_tickets AS (
+                    SELECT
+                        date_trunc('day', "assignedAt") AS assignedAt,
+                        EXTRACT(EPOCH FROM ("assignedAt" - "createdAt")) AS resolution_seconds
+                    FROM "Ticket"
+                    WHERE "assignedAt" BETWEEN %s AND %s
                 )
-                rows = await cur.fetchall()
+                SELECT assignedAt,
+                        percentile_cont(%s) WITHIN GROUP (ORDER BY resolution_seconds) AS "resolution_time",
+                        COUNT(resolution_seconds) as count
+                FROM assigned_tickets
+                GROUP BY assignedAt
+                ORDER BY assignedAt;
+                """,
+                (start, end, percentile),
+            )
+            rows = await cur.fetchall()
 
-                # Convert to dict
-                output = {}
-                debug_output = []
-                for date, value, count in rows:
-                    day_str = date.date().isoformat()
-                    output[day_str] = value
-                    debug_output.append(
-                        {"date": day_str, "value": value, "count": count}
-                    )
-                logger.debug(
-                    "Fetched question hang times",
-                    start=start.isoformat(),
-                    end=end.isoformat(),
-                    percentile=percentile,
-                    result=debug_output,
-                )
-                return output
-        except psycopg.OperationalError as e:
-            logger.error("Failed to initialise database cursor", error=str(e))
+            # Convert to dict
+            output = {}
+            debug_output = []
+            for date, value, count in rows:
+                day_str = date.date().isoformat()
+                output[day_str] = value
+                debug_output.append({"date": day_str, "value": value, "count": count})
+            logger.debug(
+                "Fetched question hang times",
+                start=start.isoformat(),
+                end=end.isoformat(),
+                percentile=percentile,
+                result=debug_output,
+            )
+            return output
 
     async def is_healthy(self) -> bool:
         if not self.connection:

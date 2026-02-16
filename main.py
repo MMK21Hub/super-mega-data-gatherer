@@ -27,6 +27,23 @@ async def app_lifespan(_: FastAPI):
 app = FastAPI(lifespan=app_lifespan)
 
 
+async def get_hang_time_data(
+    start: datetime, end: datetime
+) -> dict[str, dict[str, float]] | None:
+    try:
+        return {
+            "p90": await db_client.get_question_hang_times(start, end, 0.90),
+            "p95": await db_client.get_question_hang_times(start, end, 0.95),
+        }
+    except Exception as e:
+        logger.error(
+            "Failed to fetch question hang time data",
+            error=str(e),
+            exc_info=exc_info(),
+        )
+        return None
+
+
 @app.get("/api/v1/super-mega-stats")
 async def super_mega_stats(start: datetime, end: datetime | None):
     end = end or datetime.now(UTC).replace(microsecond=0)
@@ -34,10 +51,7 @@ async def super_mega_stats(start: datetime, end: datetime | None):
         "unresolved_tickets": await get_unresolved_tickets(
             start, end, step=timedelta(days=1)
         ),
-        "hang_time": {
-            "p90": await db_client.get_question_hang_times(start, end, 0.90),
-            "p95": await db_client.get_question_hang_times(start, end, 0.95),
-        },
+        "hang_time": await get_hang_time_data(start, end),
     }
 
 
