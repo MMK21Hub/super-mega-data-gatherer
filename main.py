@@ -36,6 +36,7 @@ async def super_mega_stats(start: datetime, end: datetime | None):
         ),
         "hang_time": {
             "p90": await db_client.get_question_hang_times(start, end, 0.90),
+            "p95": await db_client.get_question_hang_times(start, end, 0.95),
         },
     }
 
