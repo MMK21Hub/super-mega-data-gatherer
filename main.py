@@ -11,17 +11,25 @@ from database_stats import DatabaseClient
 from logging_config import configure_logging
 from prometheus_stats import get_unresolved_tickets
 
+PROJECT_NAME = "Super Mega Data Gatherer"
+
 configure_logging()
 logger = get_logger()
+logger.info(f"Initialising {PROJECT_NAME}", event_id="initialisation")
+
+db_client = DatabaseClient()
 
 
 @asynccontextmanager
 async def app_lifespan(_: FastAPI):
     global db_client
-    db_client = DatabaseClient()
-    await db_client.connect()
+    logger.info(f"Starting {PROJECT_NAME}", event_id="startup_start")
+    await db_client.open_pool()
+    logger.info(f"{PROJECT_NAME} is ready", event_id="startup_complete")
     yield
-    await db_client.disconnect()
+    logger.info(f"Shutting down {PROJECT_NAME}", event_id="shutdown_start")
+    await db_client.close_pool()
+    logger.info(f"{PROJECT_NAME} has shut down", event_id="shutdown_complete")
 
 
 app = FastAPI(lifespan=app_lifespan)
@@ -70,8 +78,6 @@ async def health_check():
     overall_health = all(healths.values())
     return {"ok": overall_health, **healths}
 
-
-logger.info("Starting Super Mega Data Gatherer")
 
 if __name__ == "__main__":
     host = getenv("HOST") or "0.0.0.0"
