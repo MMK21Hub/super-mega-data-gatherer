@@ -28,45 +28,46 @@ class DatabaseClient:
     ):
         end = end + timedelta(days=1)
 
-        async with self.connection_pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    """
-                    WITH assigned_tickets AS (
-                        SELECT
-                            date_trunc('day', "assignedAt") AS assignedAt,
-                            EXTRACT(EPOCH FROM ("assignedAt" - "createdAt")) AS resolution_seconds
-                        FROM "Ticket"
-                        WHERE "assignedAt" BETWEEN %s AND %s
+        async with self.connection_pool as pool:
+            async with pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        WITH assigned_tickets AS (
+                            SELECT
+                                date_trunc('day', "assignedAt") AS assignedAt,
+                                EXTRACT(EPOCH FROM ("assignedAt" - "createdAt")) AS resolution_seconds
+                            FROM "Ticket"
+                            WHERE "assignedAt" BETWEEN %s AND %s
+                        )
+                        SELECT assignedAt,
+                                percentile_cont(%s) WITHIN GROUP (ORDER BY resolution_seconds) AS "resolution_time",
+                                COUNT(resolution_seconds) as count
+                        FROM assigned_tickets
+                        GROUP BY assignedAt
+                        ORDER BY assignedAt;
+                        """,
+                        (start, end, percentile),
                     )
-                    SELECT assignedAt,
-                            percentile_cont(%s) WITHIN GROUP (ORDER BY resolution_seconds) AS "resolution_time",
-                            COUNT(resolution_seconds) as count
-                    FROM assigned_tickets
-                    GROUP BY assignedAt
-                    ORDER BY assignedAt;
-                    """,
-                    (start, end, percentile),
-                )
-                rows = await cur.fetchall()
+                    rows = await cur.fetchall()
 
-                # Convert to dict
-                output = {}
-                debug_output = []
-                for date, value, count in rows:
-                    day_str = date.date().isoformat()
-                    output[day_str] = value
-                    debug_output.append(
-                        {"date": day_str, "value": value, "count": count}
+                    # Convert to dict
+                    output = {}
+                    debug_output = []
+                    for date, value, count in rows:
+                        day_str = date.date().isoformat()
+                        output[day_str] = value
+                        debug_output.append(
+                            {"date": day_str, "value": value, "count": count}
+                        )
+                    logger.debug(
+                        "Fetched question hang times",
+                        start=start.isoformat(),
+                        end=end.isoformat(),
+                        percentile=percentile,
+                        result=debug_output,
                     )
-                logger.debug(
-                    "Fetched question hang times",
-                    start=start.isoformat(),
-                    end=end.isoformat(),
-                    percentile=percentile,
-                    result=debug_output,
-                )
-                return output
+                    return output
 
     async def is_healthy(self) -> bool:
         try:
