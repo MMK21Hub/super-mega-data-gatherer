@@ -24,11 +24,11 @@ db_client = DatabaseClient()
 async def app_lifespan(_: FastAPI):
     global db_client
     logger.info(f"Starting {PROJECT_NAME}", event_id="startup_start")
-    # Any future initialisation goes here
+    await db_client.open_pool()
     logger.info(f"{PROJECT_NAME} is ready", event_id="startup_complete")
     yield
     logger.info(f"Shutting down {PROJECT_NAME}", event_id="shutdown_start")
-    # Any future cleanup goes here
+    await db_client.close_pool()
     logger.info(f"{PROJECT_NAME} has shut down", event_id="shutdown_complete")
 
 
