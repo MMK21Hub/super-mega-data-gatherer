@@ -13,7 +13,13 @@ class DatabaseClient:
     def __init__(self):
         self.db_url = db_url
         self.connection_pool = AsyncConnectionPool(
-            self.db_url, min_size=1, max_size=2, timeout=30, open=False
+            self.db_url,
+            min_size=1,
+            max_size=2,
+            timeout=30,
+            open=False,
+            check=AsyncConnectionPool.check_connection,
+            max_idle=5 * 60,
         )
         self.max_cursor_retries = 5
 
