@@ -56,11 +56,12 @@ class DatabaseClient:
                 # Convert to dict
                 output = {}
                 debug_output = []
-                for date, value, count in rows:
+                for date, hang_time, count in rows:
                     day_str = date.date().isoformat()
-                    output[day_str] = value
+                    rounded_value = round(hang_time, 2)
+                    output[day_str] = rounded_value
                     debug_output.append(
-                        {"date": day_str, "value": value, "count": count}
+                        {"date": day_str, "value": rounded_value, "count": count}
                     )
                 logger.debug(
                     "Fetched question hang times",
