@@ -93,20 +93,18 @@ async def health_check():
 @app.middleware("http")
 async def add_logging_context(request: Request, call_next: Callable):
     clear_contextvars()
-    bind_contextvars(
-        request_id=uuid.uuid1().hex,
-        request=dict(
-            method=request.method,
-            path=request.url.path,
-            client=request.client.host if request.client else None,
-        ),
-    )
+    bind_contextvars(request_id=uuid.uuid1().hex)
     start_time = perf_counter_ns()
     response = await call_next(request)
     duration_ms = (perf_counter_ns() - start_time) / 1_000_000
     logger.info(
         "HTTP request",
         event_id="request",
+        request=dict(
+            method=request.method,
+            path=request.url.path,
+            client=request.client.host if request.client else None,
+        ),
         duration_ms=duration_ms,
         status=response.status_code,
     )
