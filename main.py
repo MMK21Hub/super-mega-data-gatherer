@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime
 from os import getenv
 from time import perf_counter_ns
 from typing import Callable
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from structlog import get_logger
 from structlog.contextvars import clear_contextvars, bind_contextvars
 import uvicorn
@@ -38,7 +38,24 @@ app = FastAPI(lifespan=app_lifespan)
 
 @app.get("/api/v1/super-mega-stats")
 async def super_mega_stats(start: date, end: date | None = None):
-    end = end or datetime.now(UTC).date()
+    today_utc = datetime.now(UTC).date()
+    end = end or today_utc
+
+    # Validation - this isn't really needed, but it helps limit the maximum
+    # possible size of the cache and maybe prevents callers getting confused if
+    # they give an invalid date range.
+    for d in [start, end]:
+        # Cannot query before the help channel begun
+        # TODO: make this configurable or smarter somehow
+        if d < date(2025, 11, 17):
+            raise HTTPException(status_code=400, detail=f"Date {d} is too far back!")
+        if d > today_utc:
+            raise HTTPException(status_code=400, detail="Date cannot be in the future")
+    if end < start:
+        raise HTTPException(
+            status_code=400,
+            detail="End date cannot be earlier than start date",
+        )
 
     stats = await stats_manager.get_stats(start, end)
     return {
