@@ -95,7 +95,7 @@ async def add_logging_context(request: Request, call_next: Callable):
     )
     start_time = perf_counter_ns()
     response = await call_next(request)
-    duration_ms = (perf_counter() - start_time) / 1_000_000
+    duration_ms = (perf_counter_ns() - start_time) / 1_000_000
     logger.info(
         "HTTP request",
         event_id="request",
