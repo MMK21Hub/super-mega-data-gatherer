@@ -1,6 +1,9 @@
 """Handles generating, caching, and string the stats"""
 
 from datetime import date, datetime, timedelta
+from sys import exc_info
+
+import structlog
 
 from database_stats import DatabaseClient
 from prometheus_stats import get_unresolved_tickets
@@ -60,7 +63,7 @@ class SuperMegaStatsManager:
         return {"ok": overall_health, **healths}
 
     async def get_stats(self, start: date, end: date) -> SuperMegaStatsStore:
-
+        logger = structlog.get_logger()
         cache_key = (start, end)
         if cache_key in self.stats_cache:
             store = self.stats_cache[cache_key]
@@ -74,9 +77,12 @@ class SuperMegaStatsManager:
         store.unresolved_tickets_data = await get_unresolved_tickets(
             start, end, step=timedelta(days=1)
         )
-        store.hang_time_data = {
-            "p90": await db.get_question_hang_times(start, end, 0.90),
-            "p95": await db.get_question_hang_times(start, end, 0.95),
-        }
+        try:
+            store.hang_time_data = {
+                "p90": await db.get_question_hang_times(start, end, 0.90),
+                "p95": await db.get_question_hang_times(start, end, 0.95),
+            }
+        except Exception:
+            logger.error("Failed to fetch hang time", exc_info=exc_info())
         self.stats_cache[cache_key] = store
         return store

@@ -6,6 +6,7 @@ from structlog.dev import ConsoleRenderer
 from structlog.contextvars import merge_contextvars
 
 
+# TODO: how about adding dict_tracebacks or another ExceptionDictTransformer when logging to JSON?
 shared_processors = [merge_contextvars, add_log_level]
 renderer = ConsoleRenderer() if sys.stderr.isatty() else JSONRenderer(sort_keys=True)
 
