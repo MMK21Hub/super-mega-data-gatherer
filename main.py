@@ -2,10 +2,13 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from os import getenv
 from sys import exc_info
+from time import perf_counter, perf_counter_ns
+from typing import Callable
 from fastapi import FastAPI, Request
 from structlog import get_logger
+from structlog.contextvars import clear_contextvars, bind_contextvars
 import uvicorn
-import uvicorn.config
+import uuid
 
 from database_stats import DatabaseClient
 from logging_config import configure_logging
@@ -77,6 +80,29 @@ async def health_check():
     healths = {"database": await db_client.is_healthy()}
     overall_health = all(healths.values())
     return {"ok": overall_health, **healths}
+
+
+@app.middleware("http")
+async def add_logging_context(request: Request, call_next: Callable):
+    clear_contextvars()
+    bind_contextvars(
+        request_id=uuid.uuid1().hex,
+        request=dict(
+            method=request.method,
+            path=request.url.path,
+            client=request.client.host if request.client else None,
+        ),
+    )
+    start_time = perf_counter_ns()
+    response = await call_next(request)
+    duration_ms = (perf_counter() - start_time) / 1_000_000
+    logger.info(
+        "HTTP request",
+        event_id="request",
+        duration_ms=duration_ms,
+        status=response.status_code,
+    )
+    return response
 
 
 if __name__ == "__main__":

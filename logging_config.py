@@ -3,9 +3,10 @@ import sys
 import structlog
 from structlog.processors import JSONRenderer, add_log_level
 from structlog.dev import ConsoleRenderer
+from structlog.contextvars import merge_contextvars
 
 
-shared_processors = [add_log_level]
+shared_processors = [merge_contextvars, add_log_level]
 renderer = ConsoleRenderer() if sys.stderr.isatty() else JSONRenderer(sort_keys=True)
 
 
