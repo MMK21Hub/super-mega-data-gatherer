@@ -16,7 +16,7 @@ class DatabaseClient:
             self.db_url,
             min_size=1,
             max_size=2,
-            timeout=30,
+            timeout=5,
             open=False,
             check=AsyncConnectionPool.check_connection,
             max_idle=5 * 60,
