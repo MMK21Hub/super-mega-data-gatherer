@@ -61,6 +61,8 @@ async def super_mega_stats(start: date, end: date | None = None):
     logger.debug(
         "Fetched stats",
         cache_hit=stats_response.from_cache,
+        start=start.isoformat(),
+        end=end.isoformat(),
         **(
             {"age_seconds": round(stats_response.age.total_seconds(), 1)}
             if stats_response.age
