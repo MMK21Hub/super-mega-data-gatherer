@@ -1,8 +1,7 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime
 from os import getenv
-from sys import exc_info
-from time import perf_counter, perf_counter_ns
+from time import perf_counter_ns
 from typing import Callable
 from fastapi import FastAPI, Request
 from structlog import get_logger
@@ -10,9 +9,7 @@ from structlog.contextvars import clear_contextvars, bind_contextvars
 import uvicorn
 import uuid
 
-from database_stats import DatabaseClient
 from logging_config import configure_logging
-from prometheus_stats import get_unresolved_tickets
 from stats_store import SuperMegaStatsManager
 
 PROJECT_NAME = "Super Mega Data Gatherer"
@@ -40,8 +37,8 @@ app = FastAPI(lifespan=app_lifespan)
 
 
 @app.get("/api/v1/super-mega-stats")
-async def super_mega_stats(start: datetime, end: datetime | None):
-    end = end or datetime.now(UTC).replace(microsecond=0)
+async def super_mega_stats(start: date, end: date | None = None):
+    end = end or datetime.now(UTC).date()
 
     stats = await stats_manager.get_stats(start, end)
     return {

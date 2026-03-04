@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from aiohttp import ClientSession, ClientTimeout
 import structlog
 
@@ -32,14 +32,14 @@ async def query_prometheus_range(
         return json["data"]
 
 
-async def get_unresolved_tickets(start: datetime, end: datetime, step: timedelta):
+async def get_unresolved_tickets(start: date, end: date, step: timedelta):
     response = await query_prometheus_range(
         query="""
         nephthys_in_progress_tickets{instance="support-watcher-flavortown:9000"}
         + nephthys_open_tickets{instance="support-watcher-flavortown:9000"}
         """,
-        start=start,
-        end=end,
+        start=datetime.combine(start, time(0, 0, 0)),
+        end=datetime.combine(end, time(0, 0, 0)),
         step=step,
     )
 

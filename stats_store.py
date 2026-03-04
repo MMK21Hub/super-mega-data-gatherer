@@ -46,7 +46,7 @@ class SuperMegaStatsStore:
 class SuperMegaStatsManager:
     def __init__(self):
         # A map of cache keys (which are (start, end) tuples) to stats stores
-        self.stats_cache: dict[tuple[datetime, datetime], SuperMegaStatsStore] = dict()
+        self.stats_cache: dict[tuple[date, date], SuperMegaStatsStore] = dict()
         self._db_client = DatabaseClient()
 
     async def db_client(self) -> DatabaseClient:
@@ -59,7 +59,7 @@ class SuperMegaStatsManager:
         overall_health = all(healths.values())
         return {"ok": overall_health, **healths}
 
-    async def get_stats(self, start: datetime, end: datetime) -> SuperMegaStatsStore:
+    async def get_stats(self, start: date, end: date) -> SuperMegaStatsStore:
 
         cache_key = (start, end)
         if cache_key in self.stats_cache:

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from sys import exc_info
 from psycopg_pool import AsyncConnectionPool
 import structlog
@@ -28,9 +28,7 @@ class DatabaseClient:
     async def close_pool(self):
         await self.connection_pool.close()
 
-    async def get_question_hang_times(
-        self, start: datetime, end: datetime, percentile: float
-    ):
+    async def get_question_hang_times(self, start: date, end: date, percentile: float):
         end = end + timedelta(days=1)
 
         async with self.connection_pool.connection() as conn:
