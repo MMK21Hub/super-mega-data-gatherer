@@ -21,7 +21,6 @@ class DatabaseClient:
             check=AsyncConnectionPool.check_connection,
             max_idle=5 * 60,
         )
-        self.max_cursor_retries = 5
 
     async def open_pool(self):
         await self.connection_pool.open()
