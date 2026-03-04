@@ -46,10 +46,25 @@ class SuperMegaStatsStore:
         self.updated_at = datetime.now()
 
 
+class SuperMegaStatsResponse:
+    stats: SuperMegaStatsStore
+    from_cache: bool
+    age: timedelta | None
+
+    def __init__(self, stats: SuperMegaStatsStore, from_cache: bool):
+        self.stats = stats
+        self.from_cache = from_cache
+        if not stats.updated_at:
+            self.age = None
+        else:
+            self.age = datetime.now() - stats.updated_at if from_cache else timedelta(0)
+
+
 class SuperMegaStatsManager:
     def __init__(self):
         # A map of cache keys (which are (start, end) tuples) to stats stores
         self.stats_cache: dict[tuple[date, date], SuperMegaStatsStore] = dict()
+        self.max_stats_age = timedelta(hours=1)
         self._db_client = DatabaseClient()
 
     async def db_client(self) -> DatabaseClient:
@@ -62,14 +77,27 @@ class SuperMegaStatsManager:
         overall_health = all(healths.values())
         return {"ok": overall_health, **healths}
 
-    async def get_stats(self, start: date, end: date) -> SuperMegaStatsStore:
-        logger = structlog.get_logger()
+    def get_stats_from_cache(
+        self, start: date, end: date
+    ) -> SuperMegaStatsStore | None:
         cache_key = (start, end)
         if cache_key in self.stats_cache:
             store = self.stats_cache[cache_key]
-            # Consider entries stale if they're from a previous day
-            if store.updated_at and store.updated_at.date() == date.today():
+            if (
+                store.updated_at
+                and (datetime.now() - store.updated_at) < self.max_stats_age
+            ):
                 return store
+        return None
+
+    async def get_stats(self, start: date, end: date) -> SuperMegaStatsResponse:
+        logger = structlog.get_logger()
+        cached_stats = self.get_stats_from_cache(start, end)
+        if cached_stats:
+            return SuperMegaStatsResponse(
+                stats=cached_stats,
+                from_cache=True,
+            )
 
         # No cache entry, so data must be fetched
         db = await self.db_client()
@@ -84,5 +112,5 @@ class SuperMegaStatsManager:
             }
         except Exception:
             logger.error("Failed to fetch hang time", exc_info=exc_info())
-        self.stats_cache[cache_key] = store
-        return store
+        self.stats_cache[(start, end)] = store
+        return SuperMegaStatsResponse(stats=store, from_cache=False)

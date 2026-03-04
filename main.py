@@ -57,7 +57,17 @@ async def super_mega_stats(start: date, end: date | None = None):
             detail="End date cannot be earlier than start date",
         )
 
-    stats = await stats_manager.get_stats(start, end)
+    stats_response = await stats_manager.get_stats(start, end)
+    logger.debug(
+        "Fetched stats",
+        cache_hit=stats_response.from_cache,
+        **(
+            {"age_seconds": round(stats_response.age.total_seconds(), 1)}
+            if stats_response.age
+            else {}
+        ),
+    )
+    stats = stats_response.stats
     return {
         "unresolved_tickets": stats.unresolved_tickets_data,
         "hang_time": stats.hang_time_data,
