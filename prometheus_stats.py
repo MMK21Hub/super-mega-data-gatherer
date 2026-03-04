@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 import structlog
 
 from env import get_env_or_raise
@@ -13,7 +13,8 @@ logger = structlog.get_logger()
 async def query_prometheus_range(
     query: str, start: datetime, end: datetime, step: timedelta
 ):
-    http = ClientSession()  # TODO: persist session
+    # TODO: persist session
+    http = ClientSession(timeout=ClientTimeout(total=5))
     async with http.get(
         PROMETHEUS_URL + "/api/v1/query_range",
         params={
