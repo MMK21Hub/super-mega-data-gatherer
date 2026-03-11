@@ -4,6 +4,7 @@ from os import getenv
 from time import perf_counter_ns
 from typing import Callable
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from structlog import get_logger
 from structlog.contextvars import clear_contextvars, bind_contextvars
 import uvicorn
@@ -87,7 +88,8 @@ async def root(request: Request):
 
 @app.get("/health")
 async def health_check():
-    return await stats_manager.health_check()
+    health = await stats_manager.health_check()
+    return JSONResponse(health, status_code=200 if health["ok"] else 503)
 
 
 @app.middleware("http")
