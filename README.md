@@ -12,6 +12,13 @@ This project uses Python and `uv`. Start by installing dependencies:
 uv sync
 ```
 
+And then set environment variables:
+
+```bash
+cp .env.example .env
+$EDITOR .env
+```
+
 ### Running in development
 
 Run the API with hot reloading for development:
@@ -19,6 +26,8 @@ Run the API with hot reloading for development:
 ```bash
 uv run fastapi dev
 ```
+
+See it working at <http://localhost:8000/api/v1/super-mega-stats?start=2026-01-01&end=2026-01-15>
 
 ### Running in production
 
