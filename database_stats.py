@@ -35,19 +35,43 @@ class DatabaseClient:
             async with conn.cursor() as cur:
                 await cur.execute(
                     """
-                    WITH assigned_tickets AS (
+                    WITH params AS (
                         SELECT
-                            date_trunc('day', "assignedAt") AS assignedAt,
-                            EXTRACT(EPOCH FROM ("assignedAt" - "createdAt")) AS resolution_seconds
-                        FROM "Ticket"
-                        WHERE "assignedAt" BETWEEN %s AND %s
+                            %s::timestamp AS start_time,
+                            %s::timestamp AS end_time,
+                            %s::float8    AS percentile
+                    ),
+                    days AS (
+                        SELECT generate_series(
+                            p.start_time,
+                            p.end_time,
+                            interval '1 day'
+                        ) AS day
+                        FROM params p
+                    ),
+                    hangs AS (
+                        SELECT
+                            d.day,
+                            EXTRACT(EPOCH FROM (
+                                LEAST(COALESCE(t."assignedAt", p.end_time), d.day + interval '1 day')
+                                - t."createdAt"
+                            )) AS hang_seconds
+                        FROM days d
+                        CROSS JOIN params p
+                        JOIN "Ticket" t
+                            ON t."createdAt" <= d.day
+                            AND (t."closedAt" >= d.day OR t."closedAt" IS NULL)
+                        WHERE t."createdAt" <= p.end_time
+                        AND (t."closedAt" >= p.start_time OR t."closedAt" IS NULL)
                     )
-                    SELECT assignedAt,
-                            percentile_cont(%s) WITHIN GROUP (ORDER BY resolution_seconds) AS "resolution_time",
-                            COUNT(resolution_seconds) as count
-                    FROM assigned_tickets
-                    GROUP BY assignedAt
-                    ORDER BY assignedAt;
+                    SELECT
+                        day AS "time",
+                        percentile_cont(p.percentile) WITHIN GROUP (ORDER BY hang_seconds) AS hang_time,
+                        COUNT(*) AS count
+                    FROM hangs
+                    CROSS JOIN params p
+                    GROUP BY day, p.percentile
+                    ORDER BY day;
                     """,
                     (start, end, percentile),
                 )
