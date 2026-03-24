@@ -102,9 +102,9 @@ class SuperMegaStatsManager:
         # No cache entry, so data must be fetched
         db = await self.db_client()
         store = SuperMegaStatsStore()
-        store.unresolved_tickets_data = await get_unresolved_tickets(
-            start, end, step=timedelta(days=1)
-        )
+        # store.unresolved_tickets_data = await get_unresolved_tickets(
+        #     start, end, step=timedelta(days=1)
+        # )
         try:
             store.hang_time_data = {
                 "p90": await db.get_question_hang_times(start, end, 0.90),
