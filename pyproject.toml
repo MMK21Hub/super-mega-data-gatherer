@@ -3,6 +3,8 @@ name = "super-mega-data-gatherer"
 version = "0.1.0"
 description = "Gathers support data for the Super Mega Dashboard"
 readme = "README.md"
+authors = [{ name = "Mish", email = "mish@hackclub.com" }]
+license = "MIT"
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.13.3",
