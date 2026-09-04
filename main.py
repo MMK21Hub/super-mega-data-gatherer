@@ -121,7 +121,7 @@ async def super_mega_stats_v2(event: str, start: date, end: date | None = None):
     if manager is None:
         raise HTTPException(
             status_code=404,
-            detail=f"Unknown event '{event}'. Configured events: {', '.join(managers)}",
+            detail=f"Unknown event '{event}'. Available events: {', '.join(managers)}",
         )
     bind_contextvars(event=event)
     return await stats_response(manager, start, end)
@@ -138,9 +138,7 @@ async def root(request: Request):
 
 @app.get("/health")
 async def health_check():
-    healths = {
-        slug: await manager.health_check() for slug, manager in managers.items()
-    }
+    healths = {slug: await manager.health_check() for slug, manager in managers.items()}
     overall_health = all(health["ok"] for health in healths.values())
     return JSONResponse(
         {"ok": overall_health, "events": healths},

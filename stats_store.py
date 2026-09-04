@@ -64,6 +64,8 @@ class SuperMegaStatsResponse:
 
 
 class SuperMegaStatsManager:
+    """Each event has a manager instance that handles fetching and caching stats for the event"""
+
     def __init__(self, event: EventConfig, prometheus: PrometheusClient):
         self.event = event
         self.prometheus = prometheus
