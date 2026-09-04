@@ -1,0 +1,17 @@
+# Public config used by Hack Club!
+# (if you're self-hosting, copy this file so you can point the program to your own config file)
+
+prometheus_url: "http://100.64.1.20:8429/prometheus"
+
+host: "0.0.0.0"
+port: "8000"
+
+events:
+  flavortown:
+    nephthys_db_url: "{{ env.FLAVORTOWN_NEPHTHYS_DATABASE_URL }}"
+    prometheus_labels:
+      job: "support_watcher_flavortown"
+  stardance:
+    nephthys_db_url: "{{ env.STARDANCE_NEPHTHYS_DATABASE_URL }}"
+    prometheus_labels:
+      job: "support_watcher_stardance"

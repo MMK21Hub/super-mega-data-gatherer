@@ -1,10 +1,10 @@
 import logging
 import sys
-import structlog
-from structlog.processors import JSONRenderer, add_log_level
-from structlog.dev import ConsoleRenderer
-from structlog.contextvars import merge_contextvars
 
+import structlog
+from structlog.contextvars import merge_contextvars
+from structlog.dev import ConsoleRenderer
+from structlog.processors import JSONRenderer, add_log_level
 
 # TODO: how about adding dict_tracebacks or another ExceptionDictTransformer when logging to JSON?
 shared_processors = [merge_contextvars, add_log_level]
