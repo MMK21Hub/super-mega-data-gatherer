@@ -103,19 +103,23 @@ async def stats_response(manager: SuperMegaStatsManager, start: date, end: date 
     }
 
 
-@app.get("/api/v1/super-mega-stats")
-async def super_mega_stats(start: date, end: date | None = None):
+@app.get("/api/v1/super-mega-stats", include_in_schema=False)
+async def super_mega_stats_v1(start: date, end: date | None = None):
     manager = managers.get(LEGACY_EVENT_SLUG)
     if manager is None:
         raise HTTPException(
             status_code=404,
-            detail=f"Legacy event '{LEGACY_EVENT_SLUG}' is not configured",
+            detail=f"Statistics for {LEGACY_EVENT_SLUG} are not available.",
         )
     bind_contextvars(event=LEGACY_EVENT_SLUG)
     return await stats_response(manager, start, end)
 
 
-@app.get("/api/v2/{event}/super-mega-stats")
+@app.get(
+    "/api/v2/{event}/super-mega-stats",
+    name="Super mega stats",
+    responses={404: {"description": "Unknown Event"}},
+)
 async def super_mega_stats_v2(event: str, start: date, end: date | None = None):
     manager = managers.get(event)
     if manager is None:
