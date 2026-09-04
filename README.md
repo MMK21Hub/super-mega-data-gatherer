@@ -11,7 +11,7 @@ allowing secrets to be interpolated using environment variables (see `config.yam
 
 Configuration for the main instance (for Hack Club Stardance) is committed to
 this repository and used by default. For self-hosting, you can
-provide a path to your own config file by setting the `CONFIG_PATH` environment variable.
+provide a path to your own config file using the `--config` CLI argument.
 
 Uhh I don't have any documentation for the config format but it should be relatively
 obvious. You can always DM @Mish on Slack :)

@@ -7,10 +7,11 @@ read-only view of the environment variables. This keeps the config file
 public while secrets are interpolated from the environment at runtime.
 """
 
+import argparse
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from os import environ, getenv
+from os import environ
 from pathlib import Path
 
 import structlog
@@ -160,11 +161,16 @@ def parse_event(slug: str, node: dict) -> EventConfig:
 
 
 def load_config() -> AppConfig:
-    path = Path(getenv("CONFIG_PATH") or "config.yaml")
+    cli_args = argparse.ArgumentParser()
+    cli_args.add_argument(
+        "--config",
+        help="Path to YAML config file (default: config.yaml)",
+        default="config.yaml",
+    )
+    parsed_args = cli_args.parse_args()
+    path: Path = Path(parsed_args.config)
     if not path.is_file():
-        raise ConfigError(
-            f"Config file not found at '{path}' (set CONFIG_PATH to override the location)"
-        )
+        raise ConfigError(f"Configuration file not found at '{path}'")
 
     try:
         raw = yaml.safe_load(path.read_text())
