@@ -3,14 +3,11 @@ from datetime import date, timedelta
 import structlog
 from psycopg_pool import AsyncConnectionPool
 
-from env import get_env_or_raise
-
-db_url = get_env_or_raise("NEPHTHYS_DATABASE_URL")
 logger = structlog.get_logger()
 
 
 class DatabaseClient:
-    def __init__(self):
+    def __init__(self, db_url: str):
         self.db_url = db_url
         self.connection_pool = AsyncConnectionPool(
             self.db_url,

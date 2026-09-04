@@ -4,8 +4,9 @@ from datetime import UTC, date, datetime, timedelta
 
 import structlog
 
+from config import EventConfig
 from database_stats import DatabaseClient
-from prometheus_stats import get_unresolved_tickets
+from prometheus_stats import PrometheusClient
 
 type HangTimeData = dict[str, dict[str, float]]
 type UnresolvedTicketsData = dict[str, int]
@@ -63,11 +64,13 @@ class SuperMegaStatsResponse:
 
 
 class SuperMegaStatsManager:
-    def __init__(self):
+    def __init__(self, event: EventConfig, prometheus: PrometheusClient):
+        self.event = event
+        self.prometheus = prometheus
         # A map of cache keys (which are (start, end) tuples) to stats stores
         self.stats_cache: dict[tuple[date, date], SuperMegaStatsStore] = dict()
         self.max_stats_age = timedelta(hours=1)
-        self._db_client = DatabaseClient()
+        self._db_client = DatabaseClient(event.nephthys_db_url)
 
     async def db_client(self) -> DatabaseClient:
         await self._db_client.open_pool()
@@ -104,7 +107,7 @@ class SuperMegaStatsManager:
         # No cache entry, so data must be fetched
         db = await self.db_client()
         store = SuperMegaStatsStore()
-        store.unresolved_tickets_data = await get_unresolved_tickets(
+        store.unresolved_tickets_data = await self.prometheus.get_unresolved_tickets(
             start, end, step=timedelta(days=1)
         )
         try:

@@ -1,0 +1,17 @@
+# Public configuration. Secret values are interpolated from environment
+# variables once at startup using Jinja templates: {{ env.VAR_NAME }}.
+
+prometheus_url: "{{ env.PROMETHEUS_URL }}"
+
+host: "0.0.0.0"
+port: "8000"
+
+events:
+  flavortown:
+    nephthys_db_url: "{{ env.FLAVORTOWN_NEPHTHYS_DATABASE_URL }}"
+    prometheus_labels:
+      job: "support_watcher_flavortown"
+  stardance:
+    nephthys_db_url: "{{ env.STARDANCE_NEPHTHYS_DATABASE_URL }}"
+    prometheus_labels:
+      job: "support_watcher_stardance"
