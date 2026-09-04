@@ -6,7 +6,6 @@ from aiohttp import ClientSession, ClientTimeout
 from env import get_env_or_raise
 
 PROMETHEUS_URL = get_env_or_raise("PROMETHEUS_URL")
-NEPHTHYS_DATABASE_URL = get_env_or_raise("NEPHTHYS_DATABASE_URL")
 
 logger = structlog.get_logger()
 
