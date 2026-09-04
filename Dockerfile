@@ -10,8 +10,5 @@ RUN uv sync --locked
 COPY *.py .
 COPY config.yaml .
 
-# Configure
-EXPOSE 8000
-
 ENV PATH="/app/.venv/bin:$PATH"
 ENTRYPOINT ["uv", "run", "main.py"]
