@@ -1,7 +1,7 @@
 """Loads application configuration from a YAML file.
 
 The config file is a nested map of keys to strings, committed to the repo.
-Every string value is rendered once at startup as a Jinja template using a
+Every string value is evaluated once at startup as a Jinja template using a
 restrictive sandboxed environment whose only extra variable is `env` - a
 read-only view of the environment variables. This keeps the config file
 public while secrets are interpolated from the environment at runtime.
@@ -85,7 +85,7 @@ def render_string(template: str, path: str) -> str:
     try:
         return jinja_environment.from_string(template).render(env=EnvVars())
     except Exception as e:
-        raise ConfigError(f"Config key '{path}' could not be rendered: {e}") from e
+        raise ConfigError(f"Config key '{path}' could not be evaluated: {e}") from e
 
 
 def render_tree(node: object, path: str) -> object:
