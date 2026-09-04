@@ -1,6 +1,7 @@
-from datetime import date, datetime, time, timedelta
-from aiohttp import ClientSession, ClientTimeout
+from datetime import UTC, date, datetime, time, timedelta
+
 import structlog
+from aiohttp import ClientSession, ClientTimeout
 
 from env import get_env_or_raise
 
@@ -48,7 +49,7 @@ async def get_unresolved_tickets(start: date, end: date, step: timedelta):
     values_over_time = this_series["values"]
     result_series: dict[str, int] = {}
     for timestamp, value in values_over_time:
-        day = date.fromtimestamp(float(timestamp))
+        day = datetime.fromtimestamp(float(timestamp), tz=UTC).date()
         result_series[day.isoformat()] = int(value)
 
     return result_series

@@ -1,13 +1,11 @@
 """Handles generating, caching, and string the stats"""
 
-from datetime import date, datetime, timedelta
-from sys import exc_info
+from datetime import UTC, date, datetime, timedelta
 
 import structlog
 
 from database_stats import DatabaseClient
 from prometheus_stats import get_unresolved_tickets
-
 
 type HangTimeData = dict[str, dict[str, float]]
 type UnresolvedTicketsData = dict[str, int]
@@ -24,7 +22,9 @@ class SuperMegaStatsStore:
             unresolved_tickets_data
         )
         self.updated_at: datetime | None = (
-            datetime.now() if (hang_time_data or unresolved_tickets_data) else None
+            datetime.now(tz=UTC)
+            if (hang_time_data or unresolved_tickets_data)
+            else None
         )
 
     @property
@@ -34,7 +34,7 @@ class SuperMegaStatsStore:
     @hang_time_data.setter
     def hang_time_data(self, value: HangTimeData):
         self._hang_time_data = value
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(tz=UTC)
 
     @property
     def unresolved_tickets_data(self) -> UnresolvedTicketsData | None:
@@ -43,7 +43,7 @@ class SuperMegaStatsStore:
     @unresolved_tickets_data.setter
     def unresolved_tickets_data(self, value: UnresolvedTicketsData):
         self._unresolved_tickets_data = value
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(tz=UTC)
 
 
 class SuperMegaStatsResponse:
@@ -57,7 +57,9 @@ class SuperMegaStatsResponse:
         if not stats.updated_at:
             self.age = None
         else:
-            self.age = datetime.now() - stats.updated_at if from_cache else timedelta(0)
+            self.age = (
+                datetime.now(tz=UTC) - stats.updated_at if from_cache else timedelta(0)
+            )
 
 
 class SuperMegaStatsManager:
@@ -85,7 +87,7 @@ class SuperMegaStatsManager:
             store = self.stats_cache[cache_key]
             if (
                 store.updated_at
-                and (datetime.now() - store.updated_at) < self.max_stats_age
+                and (datetime.now(tz=UTC) - store.updated_at) < self.max_stats_age
             ):
                 return store
         return None
@@ -111,6 +113,6 @@ class SuperMegaStatsManager:
                 "p95": await db.get_question_hang_times(start, end, 0.95),
             }
         except Exception:
-            logger.error("Failed to fetch hang time", exc_info=exc_info())
+            logger.exception("Failed to fetch hang time")
         self.stats_cache[(start, end)] = store
         return SuperMegaStatsResponse(stats=store, from_cache=False)

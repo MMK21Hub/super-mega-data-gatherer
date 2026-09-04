@@ -13,3 +13,6 @@ dependencies = [
     "python-dotenv>=1.2.1",
     "structlog>=25.5.0",
 ]
+
+[tool.ruff.lint]
+ignore = ["C408"]

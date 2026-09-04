@@ -1,7 +1,7 @@
-from datetime import date, datetime, timedelta
-from sys import exc_info
-from psycopg_pool import AsyncConnectionPool
+from datetime import date, timedelta
+
 import structlog
+from psycopg_pool import AsyncConnectionPool
 
 from env import get_env_or_raise
 
@@ -31,70 +31,69 @@ class DatabaseClient:
     async def get_question_hang_times(self, start: date, end: date, percentile: float):
         end = end + timedelta(days=1)
 
-        async with self.connection_pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    """
-                    WITH params AS (
-                        SELECT
-                            %s::timestamp AS start_time,
-                            %s::timestamp AS end_time,
-                            %s::float8    AS percentile
-                    ),
-                    days AS (
-                        SELECT generate_series(
-                            p.start_time,
-                            p.end_time,
-                            interval '1 day'
-                        ) AS day
-                        FROM params p
-                    ),
-                    hangs AS (
-                        SELECT
-                            d.day,
-                            EXTRACT(EPOCH FROM (
-                                LEAST(COALESCE(t."assignedAt", p.end_time), d.day + interval '1 day')
-                                - t."createdAt"
-                            )) AS hang_seconds
-                        FROM days d
-                        CROSS JOIN params p
-                        JOIN "Ticket" t
-                            ON t."createdAt" <= d.day
-                            AND (t."closedAt" >= d.day OR t."closedAt" IS NULL)
-                        WHERE t."createdAt" <= p.end_time
-                        AND (t."closedAt" >= p.start_time OR t."closedAt" IS NULL)
-                    )
+        async with self.connection_pool.connection() as conn, conn.cursor() as cur:
+            await cur.execute(
+                """
+                WITH params AS (
                     SELECT
-                        day AS "time",
-                        percentile_cont(p.percentile) WITHIN GROUP (ORDER BY hang_seconds) AS hang_time,
-                        COUNT(*) AS count
-                    FROM hangs
+                        %s::timestamp AS start_time,
+                        %s::timestamp AS end_time,
+                        %s::float8    AS percentile
+                ),
+                days AS (
+                    SELECT generate_series(
+                        p.start_time,
+                        p.end_time,
+                        interval '1 day'
+                    ) AS day
+                    FROM params p
+                ),
+                hangs AS (
+                    SELECT
+                        d.day,
+                        EXTRACT(EPOCH FROM (
+                            LEAST(COALESCE(t."assignedAt", p.end_time), d.day + interval '1 day')
+                            - t."createdAt"
+                        )) AS hang_seconds
+                    FROM days d
                     CROSS JOIN params p
-                    GROUP BY day, p.percentile
-                    ORDER BY day;
-                    """,
-                    (start, end, percentile),
+                    JOIN "Ticket" t
+                        ON t."createdAt" <= d.day
+                        AND (t."closedAt" >= d.day OR t."closedAt" IS NULL)
+                    WHERE t."createdAt" <= p.end_time
+                    AND (t."closedAt" >= p.start_time OR t."closedAt" IS NULL)
                 )
-                rows = await cur.fetchall()
+                SELECT
+                    day AS "time",
+                    percentile_cont(p.percentile) WITHIN GROUP (ORDER BY hang_seconds) AS hang_time,
+                    COUNT(*) AS count
+                FROM hangs
+                CROSS JOIN params p
+                GROUP BY day, p.percentile
+                ORDER BY day;
+                """,
+                (start, end, percentile),
+            )
+            rows = await cur.fetchall()
 
-                # Convert to dict
-                output = {}
-                debug_output = []
-                for date, hang_time, count in rows:
-                    day_str = date.date().isoformat()
-                    rounded_value = round(hang_time, 2)
-                    output[day_str] = rounded_value
-                    debug_output.append(
-                        {"date": day_str, "value": rounded_value, "count": count}
-                    )
-                logger.debug(
-                    "Fetched question hang times",
-                    start=start.isoformat(),
-                    end=end.isoformat(),
-                    percentile=percentile,
-                    result=debug_output,
+            # Convert to dict
+            output = {}
+            debug_output = []
+            for date, hang_time, count in rows:
+                day_str = date.date().isoformat()
+                rounded_value = round(hang_time, 2)
+                output[day_str] = rounded_value
+                debug_output.append(
+                    {"date": day_str, "value": rounded_value, "count": count}
                 )
-                return output
+            logger.debug(
+                "Fetched question hang times",
+                start=start.isoformat(),
+                end=end.isoformat(),
+                percentile=percentile,
+                result=debug_output,
+            )
+            return output
 
     async def is_healthy(self) -> bool:
         try:
@@ -102,9 +101,5 @@ class DatabaseClient:
                 await self.connection_pool.check_connection(conn)
                 return True
         except Exception as e:
-            logger.error(
-                "Database health check failed",
-                error=str(e),
-                exc_info=exc_info(),
-            )
+            logger.exception("Database health check failed", error=str(e))
             return False

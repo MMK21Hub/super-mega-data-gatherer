@@ -1,14 +1,15 @@
+import uuid
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from os import getenv
 from time import perf_counter_ns
-from typing import Callable
+
+import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from structlog import get_logger
-from structlog.contextvars import clear_contextvars, bind_contextvars
-import uvicorn
-import uuid
+from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from logging_config import configure_logging
 from stats_store import SuperMegaStatsManager
@@ -24,7 +25,6 @@ stats_manager = SuperMegaStatsManager()
 
 @asynccontextmanager
 async def app_lifespan(_: FastAPI):
-    global db_client
     logger.info(f"Starting {PROJECT_NAME}", event_id="startup_start")
     # Any future initialisation can go here
     logger.info(f"{PROJECT_NAME} is ready", event_id="startup_complete")
